@@ -132,7 +132,7 @@ export default function QuestionsAdmin() {
         <button onClick={() => setTab("byCategory")}>📂 حسب القسم</button>
       </div>
 
-      {/* FORM TAB */}
+      {/* FORM */}
       {tab === "form" && (
         <>
           <h3>{editId ? "✏️ تعديل سؤال" : "➕ إضافة سؤال"}</h3>
@@ -146,13 +146,28 @@ export default function QuestionsAdmin() {
 
           <br /><br />
 
-          <select value={difficulty} onChange={e => setDifficulty(Number(e.target.value))}>
-            <option value={200}>200</option>
-            <option value={400}>400</option>
-            <option value={600}>600</option>
-          </select>
+          {/* 🎯 Difficulty Cards */}
+          <strong>قيمة السؤال:</strong>
+          <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
+            {[200, 400, 600].map(val => (
+              <div
+                key={val}
+                onClick={() => setDifficulty(val)}
+                style={{
+                  padding: "16px 24px",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                  background: difficulty === val ? "#3b82f6" : "#e5e7eb",
+                  color: difficulty === val ? "white" : "black"
+                }}
+              >
+                {val}
+              </div>
+            ))}
+          </div>
 
-          <br /><br />
+          <br />
 
           <strong>الدول:</strong><br />
           {countries.map(c => (
@@ -173,7 +188,9 @@ export default function QuestionsAdmin() {
               key={l.code}
               placeholder={`السؤال (${l.code})`}
               value={questionText[l.code] || ""}
-              onChange={e => setQuestionText(prev => ({ ...prev, [l.code]: e.target.value }))}
+              onChange={e =>
+                setQuestionText(prev => ({ ...prev, [l.code]: e.target.value }))
+              }
             />
           ))}
 
@@ -185,7 +202,9 @@ export default function QuestionsAdmin() {
               key={l.code}
               placeholder={`الجواب (${l.code})`}
               value={answerText[l.code] || ""}
-              onChange={e => setAnswerText(prev => ({ ...prev, [l.code]: e.target.value }))}
+              onChange={e =>
+                setAnswerText(prev => ({ ...prev, [l.code]: e.target.value }))
+              }
             />
           ))}
 
