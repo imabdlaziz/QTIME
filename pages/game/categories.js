@@ -54,11 +54,11 @@ export default function ChooseCategories() {
 
   return (
     <div style={{ padding: 40 }}>
-      <h1>اختر الأقسام</h1>
+      <h1>📂 اختر الأقسام</h1>
 
-      <p>
-        عدد الأقسام المختارة:{" "}
-        <strong>{selected.length} / 8</strong>
+      <p style={{ fontSize: 18 }}>
+        عدد الأقسام المختارة:
+        <strong> {selected.length} / 8</strong>
       </p>
 
       <div style={{ display: "flex", gap: 15, flexWrap: "wrap" }}>
@@ -83,13 +83,13 @@ export default function ChooseCategories() {
         })}
       </div>
 
-      <br /><br />
+      <br />
 
       <button
         onClick={next}
         disabled={selected.length < 4}
         style={{
-          padding: "14px 28px",
+          padding: "14px 30px",
           fontSize: 18,
           cursor: selected.length < 4 ? "not-allowed" : "pointer",
           opacity: selected.length < 4 ? 0.5 : 1
