@@ -1,6 +1,6 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 
 export default function GameBoard() {
@@ -8,8 +8,15 @@ export default function GameBoard() {
   const { country, language, teamA, teamB, categories } = router.query;
 
   const [cats, setCats] = useState([]);
-  const [used, setUsed] = useState({}); // categoryId_value => true
+  const [usedCards, setUsedCards] = useState({}); // category_value => true
+  const [usedQuestions, setUsedQuestions] = useState({}); // questionId => true
   const [loading, setLoading] = useState(true);
+
+  // Question modal
+  const [showQuestion, setShowQuestion] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [currentValue, setCurrentValue] = useState(null);
+  const [currentCategory, setCurrentCategory] = useState(null);
 
   useEffect(() => {
     if (!categories) return;
@@ -27,14 +34,46 @@ export default function GameBoard() {
     setLoading(false);
   };
 
-  const selectQuestion = (categoryId, value) => {
-    const key = `${categoryId}_${value}`;
-    if (used[key]) return;
+  const openQuestion = async (categoryId, value) => {
+    const cardKey = `${categoryId}_${value}`;
+    if (usedCards[cardKey]) return;
 
-    setUsed(prev => ({ ...prev, [key]: true }));
+    // جلب أسئلة مناسبة
+    const q = query(
+      collection(db, "questions"),
+      where("active", "==", true),
+      where("categoryId", "==", categoryId),
+      where("difficulty", "==", value),
+      where("countries", "array-contains", country)
+    );
 
-    alert(`سؤال من قسم ${categoryId} بقيمة ${value}`);
-    // المرحلة الجاية: نجيب السؤال الحقيقي ونفتحه
+    const snap = await getDocs(q);
+    const pool = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(q => !usedQuestions[q.id]);
+
+    if (pool.length === 0) {
+      alert("ما في أسئلة متبقية بهالمستوى");
+      return;
+    }
+
+    // اختيار سؤال عشوائي
+    const picked = pool[Math.floor(Math.random() * pool.length)];
+
+    setUsedCards(prev => ({ ...prev, [cardKey]: true }));
+    setUsedQuestions(prev => ({ ...prev, [picked.id]: true }));
+
+    setCurrentCategory(categoryId);
+    setCurrentValue(value);
+    setCurrentQuestion(picked);
+    setShowQuestion(true);
+  };
+
+  const closeQuestion = () => {
+    setShowQuestion(false);
+    setCurrentQuestion(null);
+    setCurrentCategory(null);
+    setCurrentValue(null);
   };
 
   if (loading) return <p>تحميل لوحة اللعب...</p>;
@@ -48,6 +87,7 @@ export default function GameBoard() {
         <div style={{ fontSize: 20 }}>🔴 {teamB}</div>
       </div>
 
+      {/* BOARD */}
       {cats.map(c => (
         <div key={c.id} style={{ marginBottom: 25 }}>
           <h3>{c.name?.[language] || c.name?.ar}</h3>
@@ -55,12 +95,12 @@ export default function GameBoard() {
           <div style={{ display: "flex", gap: 15 }}>
             {[200, 400, 600].map(val => {
               const key = `${c.id}_${val}`;
-              const disabled = used[key];
+              const disabled = usedCards[key];
 
               return (
                 <div
                   key={val}
-                  onClick={() => selectQuestion(c.id, val)}
+                  onClick={() => openQuestion(c.id, val)}
                   style={{
                     padding: "16px 28px",
                     borderRadius: 10,
@@ -78,6 +118,61 @@ export default function GameBoard() {
           </div>
         </div>
       ))}
+
+      {/* QUESTION MODAL */}
+      {showQuestion && currentQuestion && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+        >
+          <div
+            style={{
+              background: "white",
+              padding: 30,
+              borderRadius: 12,
+              maxWidth: 700,
+              width: "90%"
+            }}
+          >
+            <h2>
+              {currentQuestion.question?.[language] ||
+                currentQuestion.question?.ar}
+            </h2>
+
+            {/* Media */}
+            {currentQuestion.media?.type === "image" && (
+              <img
+                src={currentQuestion.media.url}
+                alt="question"
+                style={{ maxWidth: "100%", marginTop: 15 }}
+              />
+            )}
+
+            {currentQuestion.media?.type === "video" && (
+              <video
+                src={currentQuestion.media.url}
+                controls
+                style={{ maxWidth: "100%", marginTop: 15 }}
+              />
+            )}
+
+            <hr />
+
+            <button
+              onClick={closeQuestion}
+              style={{ padding: "10px 20px", fontSize: 16 }}
+            >
+              إغلاق السؤال
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
