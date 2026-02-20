@@ -5,6 +5,7 @@ import { db } from "../../lib/firebase";
 
 export default function GameBoard() {
   const router = useRouter();
+  const { isReady } = router;
   const { country, language, teamA, teamB, categories } = router.query;
 
   const [cats, setCats] = useState([]);
@@ -19,9 +20,10 @@ export default function GameBoard() {
   const [currentCategory, setCurrentCategory] = useState(null);
 
   useEffect(() => {
+    if (!isReady) return;
     if (!categories) return;
     fetchCategories();
-  }, [categories]);
+  }, [isReady, categories]);
 
   const fetchCategories = async () => {
     const ids = categories.split(",");
@@ -38,7 +40,6 @@ export default function GameBoard() {
     const cardKey = `${categoryId}_${value}`;
     if (usedCards[cardKey]) return;
 
-    // جلب أسئلة مناسبة
     const q = query(
       collection(db, "questions"),
       where("active", "==", true),
@@ -57,7 +58,6 @@ export default function GameBoard() {
       return;
     }
 
-    // اختيار سؤال عشوائي
     const picked = pool[Math.floor(Math.random() * pool.length)];
 
     setUsedCards(prev => ({ ...prev, [cardKey]: true }));
@@ -76,7 +76,9 @@ export default function GameBoard() {
     setCurrentValue(null);
   };
 
-  if (loading) return <p>تحميل لوحة اللعب...</p>;
+  if (!isReady || loading) {
+    return <p>تحميل لوحة اللعب...</p>;
+  }
 
   return (
     <div style={{ padding: 40 }}>
@@ -128,7 +130,8 @@ export default function GameBoard() {
             background: "rgba(0,0,0,0.6)",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center"
+            justifyContent: "center",
+            zIndex: 50
           }}
         >
           <div
