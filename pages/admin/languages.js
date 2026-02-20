@@ -4,108 +4,101 @@ import { onAuthStateChanged } from "firebase/auth";
 import { db, auth } from "../../lib/firebase";
 import { useRouter } from "next/router";
 
-export default function CountriesAdmin() {
+export default function LanguagesAdmin() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [countries, setCountries] = useState([]);
+  const [languages, setLanguages] = useState([]);
 
   const [code, setCode] = useState("");
-  const [nameAr, setNameAr] = useState("");
-  const [nameEn, setNameEn] = useState("");
+  const [name, setName] = useState("");
 
-  // حماية الصفحة
   useEffect(() => {
-    onAuthStateChanged(auth, (user) => {
+    const unsub = onAuthStateChanged(auth, (user) => {
       if (!user) {
         router.push("/admin/login");
       } else {
-        fetchCountries();
         setLoading(false);
+        fetchLanguages();
       }
     });
+    return () => unsub();
   }, []);
 
-  const fetchCountries = async () => {
-    const snapshot = await getDocs(collection(db, "countries"));
+  const fetchLanguages = async () => {
+    const snapshot = await getDocs(collection(db, "languages"));
     const data = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
-    setCountries(data);
+    setLanguages(data);
   };
 
-  const addCountry = async () => {
-    if (!code || !nameAr || !nameEn) {
+  const addLanguage = async () => {
+    if (!code || !name) {
       alert("الرجاء تعبئة جميع الحقول");
       return;
     }
 
-    await addDoc(collection(db, "countries"), {
-      code: code.toUpperCase(),
-      name: {
-        ar: nameAr,
-        en: nameEn
-      },
+    // منع التكرار
+    const exists = languages.find(
+      l => l.code.toLowerCase() === code.toLowerCase()
+    );
+    if (exists) {
+      alert("هذه اللغة مضافة مسبقًا");
+      return;
+    }
+
+    await addDoc(collection(db, "languages"), {
+      code: code.toLowerCase(),
+      name,
       active: true
     });
 
     setCode("");
-    setNameAr("");
-    setNameEn("");
-    fetchCountries();
+    setName("");
+    fetchLanguages();
   };
 
   const toggleActive = async (id, current) => {
-    await updateDoc(doc(db, "countries", id), {
+    await updateDoc(doc(db, "languages", id), {
       active: !current
     });
-    fetchCountries();
+    fetchLanguages();
   };
 
   if (loading) return <p>جاري التحميل...</p>;
 
   return (
     <div style={{ padding: 40 }}>
-      <h1>إدارة الدول</h1>
+      <h1>إدارة اللغات</h1>
 
-      <h3>إضافة دولة جديدة</h3>
-
+      <h3>إضافة لغة جديدة</h3>
       <input
-        placeholder="كود الدولة (مثال: KW)"
+        placeholder="كود اللغة (مثال: ar)"
         value={code}
         onChange={(e) => setCode(e.target.value)}
       />
       <br /><br />
-
       <input
-        placeholder="اسم الدولة بالعربي"
-        value={nameAr}
-        onChange={(e) => setNameAr(e.target.value)}
+        placeholder="اسم اللغة"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
       />
       <br /><br />
-
-      <input
-        placeholder="اسم الدولة بالإنجليزي"
-        value={nameEn}
-        onChange={(e) => setNameEn(e.target.value)}
-      />
-      <br /><br />
-
-      <button onClick={addCountry}>➕ إضافة الدولة</button>
+      <button onClick={addLanguage}>➕ إضافة اللغة</button>
 
       <hr style={{ margin: "30px 0" }} />
 
-      <h3>الدول الحالية</h3>
+      <h3>اللغات الحالية</h3>
+      {languages.length === 0 && <p>لا توجد لغات بعد</p>}
 
-      {countries.length === 0 && <p>لا توجد دول بعد</p>}
-
-      {countries.map(country => (
-        <div key={country.id} style={{ marginBottom: 10 }}>
-          <strong>{country.code}</strong> – {country.name.ar} ({country.name.en})
+      {languages.map(lang => (
+        <div key={lang.id} style={{ marginBottom: 10 }}>
+          <strong>{lang.code}</strong> – {lang.name}
           {" "}
-          {country.active ? "🟢" : "🔴"}
+          {lang.active ? "🟢" : "🔴"}
           <button
-            onClick={() => toggleActive(country.id, country.active)}
+            onClick={() => toggleActive(lang.id, lang.active)}
             style={{ marginLeft: 10 }}
           >
             تغيير الحالة
