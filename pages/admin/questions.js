@@ -29,8 +29,10 @@ export default function QuestionsAdmin() {
   const [selectedCountries, setSelectedCountries] = useState([]);
   const [questionText, setQuestionText] = useState({});
   const [answerText, setAnswerText] = useState({});
+  const [mediaType, setMediaType] = useState("");
+  const [mediaUrl, setMediaUrl] = useState("");
 
-  // search / filter
+  // filters
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
 
@@ -70,6 +72,8 @@ export default function QuestionsAdmin() {
     setSelectedCountries([]);
     setQuestionText({});
     setAnswerText({});
+    setMediaType("");
+    setMediaUrl("");
     setTab("form");
   };
 
@@ -85,6 +89,7 @@ export default function QuestionsAdmin() {
       countries: selectedCountries,
       question: questionText,
       answer: answerText,
+      media: mediaType && mediaUrl ? { type: mediaType, url: mediaUrl } : null,
       active: true
     };
 
@@ -110,10 +115,9 @@ export default function QuestionsAdmin() {
     }
   };
 
-  const filteredQuestions = questions.filter(q => {
-    const text = Object.values(q.question || {}).join(" ").toLowerCase();
-    return text.includes(search.toLowerCase());
-  });
+  const filteredQuestions = questions.filter(q =>
+    Object.values(q.question || {}).join(" ").toLowerCase().includes(search.toLowerCase())
+  );
 
   if (loading) return <p>جاري التحميل...</p>;
 
@@ -128,7 +132,7 @@ export default function QuestionsAdmin() {
         <button onClick={() => setTab("byCategory")}>📂 حسب القسم</button>
       </div>
 
-      {/* TAB: FORM */}
+      {/* FORM TAB */}
       {tab === "form" && (
         <>
           <h3>{editId ? "✏️ تعديل سؤال" : "➕ إضافة سؤال"}</h3>
@@ -169,9 +173,7 @@ export default function QuestionsAdmin() {
               key={l.code}
               placeholder={`السؤال (${l.code})`}
               value={questionText[l.code] || ""}
-              onChange={e =>
-                setQuestionText(prev => ({ ...prev, [l.code]: e.target.value }))
-              }
+              onChange={e => setQuestionText(prev => ({ ...prev, [l.code]: e.target.value }))}
             />
           ))}
 
@@ -183,13 +185,32 @@ export default function QuestionsAdmin() {
               key={l.code}
               placeholder={`الجواب (${l.code})`}
               value={answerText[l.code] || ""}
-              onChange={e =>
-                setAnswerText(prev => ({ ...prev, [l.code]: e.target.value }))
-              }
+              onChange={e => setAnswerText(prev => ({ ...prev, [l.code]: e.target.value }))}
             />
           ))}
 
           <br /><br />
+
+          <strong>مرفق السؤال (اختياري):</strong><br />
+          <select value={mediaType} onChange={e => setMediaType(e.target.value)}>
+            <option value="">بدون</option>
+            <option value="image">صورة</option>
+            <option value="video">فيديو</option>
+          </select>
+
+          {mediaType && (
+            <>
+              <br /><br />
+              <input
+                placeholder="رابط الصورة أو الفيديو"
+                value={mediaUrl}
+                onChange={e => setMediaUrl(e.target.value)}
+              />
+            </>
+          )}
+
+          <br /><br />
+
           <button onClick={saveQuestion}>
             {editId ? "💾 حفظ التعديل" : "➕ إضافة"}
           </button>
@@ -197,12 +218,12 @@ export default function QuestionsAdmin() {
         </>
       )}
 
-      {/* TAB: ALL QUESTIONS */}
+      {/* ALL QUESTIONS */}
       {tab === "all" && (
         <>
           <h3>📚 كل الأسئلة</h3>
           <input
-            placeholder="🔍 ابحث عن سؤال"
+            placeholder="🔍 بحث"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -210,10 +231,8 @@ export default function QuestionsAdmin() {
           <hr />
 
           {filteredQuestions.map(q => (
-            <div key={q.id} style={{ marginBottom: 10 }}>
-              <strong>{q.question?.ar || "—"}</strong> ({q.difficulty})
-              {" "}— {q.active ? "🟢" : "🔴"}
-
+            <div key={q.id}>
+              <strong>{q.question?.ar}</strong> ({q.difficulty})
               <button onClick={() => {
                 setEditId(q.id);
                 setCategoryId(q.categoryId);
@@ -221,9 +240,10 @@ export default function QuestionsAdmin() {
                 setSelectedCountries(q.countries);
                 setQuestionText(q.question || {});
                 setAnswerText(q.answer || {});
+                setMediaType(q.media?.type || "");
+                setMediaUrl(q.media?.url || "");
                 setTab("form");
               }}>✏️</button>
-
               <button onClick={() => toggleActive(q.id, q.active)}>👁</button>
               <button onClick={() => deleteQuestion(q.id)}>🗑</button>
             </div>
@@ -231,19 +251,29 @@ export default function QuestionsAdmin() {
         </>
       )}
 
-      {/* TAB: BY CATEGORY */}
+      {/* BY CATEGORY */}
       {tab === "byCategory" && (
         <>
           <h3>📂 الأسئلة حسب القسم</h3>
 
-          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
-            <option value="">اختر قسم</option>
+          <div style={{ marginBottom: 15 }}>
             {categories.map(c => (
-              <option key={c.id} value={c.id}>{c.name.ar}</option>
+              <button
+                key={c.id}
+                onClick={() => setFilterCategory(c.id)}
+                style={{
+                  marginRight: 8,
+                  background: filterCategory === c.id ? "#3b82f6" : "#e5e7eb",
+                  color: filterCategory === c.id ? "white" : "black",
+                  border: "none",
+                  padding: "6px 12px",
+                  borderRadius: 6
+                }}
+              >
+                {c.name.ar}
+              </button>
             ))}
-          </select>
-
-          <hr />
+          </div>
 
           {questions
             .filter(q => q.categoryId === filterCategory)
@@ -257,6 +287,8 @@ export default function QuestionsAdmin() {
                   setSelectedCountries(q.countries);
                   setQuestionText(q.question || {});
                   setAnswerText(q.answer || {});
+                  setMediaType(q.media?.type || "");
+                  setMediaUrl(q.media?.url || "");
                   setTab("form");
                 }}>✏️</button>
                 <button onClick={() => deleteQuestion(q.id)}>🗑</button>
