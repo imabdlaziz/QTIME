@@ -35,25 +35,35 @@ export default function CountriesAdmin() {
   };
 
   const addCountry = async () => {
-    if (!code || !nameAr || !nameEn) {
-      alert("الرجاء تعبئة جميع الحقول");
-      return;
-    }
+  if (!code || !nameAr || !nameEn) {
+    alert("الرجاء تعبئة جميع الحقول");
+    return;
+  }
 
-    await addDoc(collection(db, "countries"), {
-      code: code.toUpperCase(),
-      name: {
-        ar: nameAr,
-        en: nameEn
-      },
-      active: true
-    });
+  // تحقق إذا الدولة موجودة مسبقًا
+  const exists = countries.find(
+    c => c.code.toUpperCase() === code.toUpperCase()
+  );
 
-    setCode("");
-    setNameAr("");
-    setNameEn("");
-    fetchCountries();
-  };
+  if (exists) {
+    alert("هذه الدولة مضافة مسبقًا ❌");
+    return;
+  }
+
+  await addDoc(collection(db, "countries"), {
+    code: code.toUpperCase(),
+    name: {
+      ar: nameAr,
+      en: nameEn
+    },
+    active: true
+  });
+
+  setCode("");
+  setNameAr("");
+  setNameEn("");
+  fetchCountries();
+};
 
   const toggleActive = async (id, current) => {
     await updateDoc(doc(db, "countries", id), {
