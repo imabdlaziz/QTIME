@@ -15,7 +15,7 @@ export default function QuestionsAdmin() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("form"); // form | all | byCategory
+  const [tab, setTab] = useState("form");
 
   const [categories, setCategories] = useState([]);
   const [countries, setCountries] = useState([]);
@@ -31,6 +31,9 @@ export default function QuestionsAdmin() {
   const [answerText, setAnswerText] = useState({});
   const [mediaType, setMediaType] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
+
+  // bulk add
+  const [bulkMode, setBulkMode] = useState(false);
 
   // filters
   const [search, setSearch] = useState("");
@@ -65,16 +68,17 @@ export default function QuestionsAdmin() {
     setList(list.includes(value) ? list.filter(v => v !== value) : [...list, value]);
   };
 
-  const resetForm = () => {
+  const resetForm = (keepFixed = false) => {
     setEditId(null);
-    setCategoryId("");
-    setDifficulty(200);
-    setSelectedCountries([]);
+    if (!keepFixed) {
+      setCategoryId("");
+      setDifficulty(200);
+      setSelectedCountries([]);
+    }
     setQuestionText({});
     setAnswerText({});
     setMediaType("");
     setMediaUrl("");
-    setTab("form");
   };
 
   const saveQuestion = async () => {
@@ -99,12 +103,7 @@ export default function QuestionsAdmin() {
       await addDoc(collection(db, "questions"), payload);
     }
 
-    resetForm();
-    fetchAll();
-  };
-
-  const toggleActive = async (id, current) => {
-    await updateDoc(doc(db, "questions", id), { active: !current });
+    resetForm(bulkMode);
     fetchAll();
   };
 
@@ -115,206 +114,140 @@ export default function QuestionsAdmin() {
     }
   };
 
-  const filteredQuestions = questions.filter(q =>
-    Object.values(q.question || {}).join(" ").toLowerCase().includes(search.toLowerCase())
-  );
-
   if (loading) return <p>جاري التحميل...</p>;
 
   return (
     <div style={{ padding: 40 }}>
       <h1>إدارة الأسئلة</h1>
 
-      {/* Tabs */}
-      <div style={{ marginBottom: 20 }}>
-        <button onClick={() => setTab("form")}>➕ إضافة / تعديل</button>{" "}
-        <button onClick={() => setTab("all")}>📚 كل الأسئلة</button>{" "}
-        <button onClick={() => setTab("byCategory")}>📂 حسب القسم</button>
+      {/* Bulk Mode */}
+      <label style={{ display: "block", marginBottom: 15 }}>
+        <input
+          type="checkbox"
+          checked={bulkMode}
+          onChange={() => setBulkMode(!bulkMode)}
+        />{" "}
+        🔁 إضافة عدة أسئلة بنفس القسم والقيمة والدولة
+      </label>
+
+      {/* CATEGORY CARDS */}
+      <strong>القسم:</strong>
+      <div style={{ display: "flex", gap: 10, margin: "10px 0" }}>
+        {categories.map(c => (
+          <div
+            key={c.id}
+            onClick={() => setCategoryId(c.id)}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 8,
+              cursor: "pointer",
+              background: categoryId === c.id ? "#2563eb" : "#e5e7eb",
+              color: categoryId === c.id ? "white" : "black"
+            }}
+          >
+            {c.name.ar}
+          </div>
+        ))}
       </div>
 
-      {/* FORM */}
-      {tab === "form" && (
-        <>
-          <h3>{editId ? "✏️ تعديل سؤال" : "➕ إضافة سؤال"}</h3>
-
-          <select value={categoryId} onChange={e => setCategoryId(e.target.value)}>
-            <option value="">اختر القسم</option>
-            {categories.map(c => (
-              <option key={c.id} value={c.id}>{c.name.ar}</option>
-            ))}
-          </select>
-
-          <br /><br />
-
-          {/* 🎯 Difficulty Cards */}
-          <strong>قيمة السؤال:</strong>
-          <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
-            {[200, 400, 600].map(val => (
-              <div
-                key={val}
-                onClick={() => setDifficulty(val)}
-                style={{
-                  padding: "16px 24px",
-                  borderRadius: 10,
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  background: difficulty === val ? "#3b82f6" : "#e5e7eb",
-                  color: difficulty === val ? "white" : "black"
-                }}
-              >
-                {val}
-              </div>
-            ))}
+      {/* DIFFICULTY CARDS */}
+      <strong>قيمة السؤال:</strong>
+      <div style={{ display: "flex", gap: 12, margin: "10px 0" }}>
+        {[200, 400, 600].map(val => (
+          <div
+            key={val}
+            onClick={() => setDifficulty(val)}
+            style={{
+              padding: "14px 20px",
+              borderRadius: 10,
+              cursor: "pointer",
+              fontWeight: "bold",
+              background: difficulty === val ? "#16a34a" : "#e5e7eb",
+              color: difficulty === val ? "white" : "black"
+            }}
+          >
+            {val}
           </div>
+        ))}
+      </div>
 
-          <br />
-
-          <strong>الدول:</strong><br />
-          {countries.map(c => (
-            <label key={c.code} style={{ marginRight: 10 }}>
-              <input
-                type="checkbox"
-                checked={selectedCountries.includes(c.code)}
-                onChange={() => toggle(c.code, selectedCountries, setSelectedCountries)}
-              /> {c.name.ar}
-            </label>
-          ))}
-
-          <br /><br />
-
-          <strong>السؤال:</strong>
-          {languages.map(l => (
-            <input
-              key={l.code}
-              placeholder={`السؤال (${l.code})`}
-              value={questionText[l.code] || ""}
-              onChange={e =>
-                setQuestionText(prev => ({ ...prev, [l.code]: e.target.value }))
-              }
-            />
-          ))}
-
-          <br /><br />
-
-          <strong>الجواب:</strong>
-          {languages.map(l => (
-            <input
-              key={l.code}
-              placeholder={`الجواب (${l.code})`}
-              value={answerText[l.code] || ""}
-              onChange={e =>
-                setAnswerText(prev => ({ ...prev, [l.code]: e.target.value }))
-              }
-            />
-          ))}
-
-          <br /><br />
-
-          <strong>مرفق السؤال (اختياري):</strong><br />
-          <select value={mediaType} onChange={e => setMediaType(e.target.value)}>
-            <option value="">بدون</option>
-            <option value="image">صورة</option>
-            <option value="video">فيديو</option>
-          </select>
-
-          {mediaType && (
-            <>
-              <br /><br />
-              <input
-                placeholder="رابط الصورة أو الفيديو"
-                value={mediaUrl}
-                onChange={e => setMediaUrl(e.target.value)}
-              />
-            </>
-          )}
-
-          <br /><br />
-
-          <button onClick={saveQuestion}>
-            {editId ? "💾 حفظ التعديل" : "➕ إضافة"}
-          </button>
-          {editId && <button onClick={resetForm}>❌ إلغاء</button>}
-        </>
-      )}
-
-      {/* ALL QUESTIONS */}
-      {tab === "all" && (
-        <>
-          <h3>📚 كل الأسئلة</h3>
+      {/* COUNTRIES */}
+      <strong>الدول:</strong><br />
+      {countries.map(c => (
+        <label key={c.code} style={{ marginRight: 10 }}>
           <input
-            placeholder="🔍 بحث"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+            type="checkbox"
+            checked={selectedCountries.includes(c.code)}
+            onChange={() => toggle(c.code, selectedCountries, setSelectedCountries)}
+          /> {c.name.ar}
+        </label>
+      ))}
 
-          <hr />
+      <hr />
 
-          {filteredQuestions.map(q => (
-            <div key={q.id}>
-              <strong>{q.question?.ar}</strong> ({q.difficulty})
-              <button onClick={() => {
-                setEditId(q.id);
-                setCategoryId(q.categoryId);
-                setDifficulty(q.difficulty);
-                setSelectedCountries(q.countries);
-                setQuestionText(q.question || {});
-                setAnswerText(q.answer || {});
-                setMediaType(q.media?.type || "");
-                setMediaUrl(q.media?.url || "");
-                setTab("form");
-              }}>✏️</button>
-              <button onClick={() => toggleActive(q.id, q.active)}>👁</button>
-              <button onClick={() => deleteQuestion(q.id)}>🗑</button>
-            </div>
-          ))}
-        </>
-      )}
+      {/* QUESTION TEXT */}
+      <strong>السؤال:</strong>
+      {languages.map(l => (
+        <input
+          key={l.code}
+          placeholder={`السؤال (${l.code})`}
+          value={questionText[l.code] || ""}
+          onChange={e =>
+            setQuestionText(prev => ({ ...prev, [l.code]: e.target.value }))
+          }
+        />
+      ))}
 
-      {/* BY CATEGORY */}
-      {tab === "byCategory" && (
+      <br /><br />
+
+      {/* ANSWER */}
+      <strong>الجواب:</strong>
+      {languages.map(l => (
+        <input
+          key={l.code}
+          placeholder={`الجواب (${l.code})`}
+          value={answerText[l.code] || ""}
+          onChange={e =>
+            setAnswerText(prev => ({ ...prev, [l.code]: e.target.value }))
+          }
+        />
+      ))}
+
+      <br /><br />
+
+      {/* MEDIA */}
+      <strong>مرفق (اختياري):</strong><br />
+      <select value={mediaType} onChange={e => setMediaType(e.target.value)}>
+        <option value="">بدون</option>
+        <option value="image">صورة</option>
+        <option value="video">فيديو</option>
+      </select>
+
+      {mediaType && (
         <>
-          <h3>📂 الأسئلة حسب القسم</h3>
-
-          <div style={{ marginBottom: 15 }}>
-            {categories.map(c => (
-              <button
-                key={c.id}
-                onClick={() => setFilterCategory(c.id)}
-                style={{
-                  marginRight: 8,
-                  background: filterCategory === c.id ? "#3b82f6" : "#e5e7eb",
-                  color: filterCategory === c.id ? "white" : "black",
-                  border: "none",
-                  padding: "6px 12px",
-                  borderRadius: 6
-                }}
-              >
-                {c.name.ar}
-              </button>
-            ))}
-          </div>
-
-          {questions
-            .filter(q => q.categoryId === filterCategory)
-            .map(q => (
-              <div key={q.id}>
-                <strong>{q.question?.ar}</strong> ({q.difficulty})
-                <button onClick={() => {
-                  setEditId(q.id);
-                  setCategoryId(q.categoryId);
-                  setDifficulty(q.difficulty);
-                  setSelectedCountries(q.countries);
-                  setQuestionText(q.question || {});
-                  setAnswerText(q.answer || {});
-                  setMediaType(q.media?.type || "");
-                  setMediaUrl(q.media?.url || "");
-                  setTab("form");
-                }}>✏️</button>
-                <button onClick={() => deleteQuestion(q.id)}>🗑</button>
-              </div>
-            ))}
+          <br />
+          <input
+            placeholder="رابط الصورة أو الفيديو"
+            value={mediaUrl}
+            onChange={e => setMediaUrl(e.target.value)}
+          />
         </>
       )}
+
+      <br /><br />
+
+      <button onClick={saveQuestion}>💾 حفظ السؤال</button>
+
+      <hr />
+
+      {/* QUESTIONS LIST */}
+      <h3>الأسئلة الحالية</h3>
+      {questions.map(q => (
+        <div key={q.id}>
+          <strong>{q.question?.ar}</strong> ({q.difficulty})
+          <button onClick={() => deleteQuestion(q.id)}>🗑</button>
+        </div>
+      ))}
     </div>
   );
 }
