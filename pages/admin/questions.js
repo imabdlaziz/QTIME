@@ -32,7 +32,7 @@ export default function QuestionsAdmin() {
   const [mediaType, setMediaType] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
 
-  // UX helpers
+  // helpers
   const [bulkMode, setBulkMode] = useState(false);
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
@@ -81,6 +81,7 @@ export default function QuestionsAdmin() {
     setAnswerText({});
     setMediaType("");
     setMediaUrl("");
+    setTab("form");
   };
 
   const saveQuestion = async () => {
@@ -109,11 +110,30 @@ export default function QuestionsAdmin() {
     fetchAll();
   };
 
+  const toggleActive = async (id, current) => {
+    await updateDoc(doc(db, "questions", id), {
+      active: !current
+    });
+    fetchAll();
+  };
+
   const deleteQuestion = async (id) => {
     if (confirm("متأكد تبي تحذف السؤال؟")) {
       await deleteDoc(doc(db, "questions", id));
       fetchAll();
     }
+  };
+
+  const startEdit = (q) => {
+    setEditId(q.id);
+    setCategoryId(q.categoryId);
+    setDifficulty(q.difficulty);
+    setSelectedCountries(q.countries);
+    setQuestionText(q.question || {});
+    setAnswerText(q.answer || {});
+    setMediaType(q.media?.type || "");
+    setMediaUrl(q.media?.url || "");
+    setTab("form");
   };
 
   const filteredQuestions = questions.filter(q =>
@@ -133,7 +153,7 @@ export default function QuestionsAdmin() {
         <button onClick={() => setTab("byCategory")}>📂 حسب القسم</button>
       </div>
 
-      {/* ================= FORM TAB ================= */}
+      {/* ================= FORM ================= */}
       {tab === "form" && (
         <>
           <label style={{ display: "block", marginBottom: 15 }}>
@@ -145,7 +165,7 @@ export default function QuestionsAdmin() {
             🔁 إضافة عدة أسئلة بنفس الإعدادات
           </label>
 
-          {/* CATEGORY CARDS */}
+          {/* Category cards */}
           <strong>القسم:</strong>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "10px 0" }}>
             {categories.map(c => (
@@ -165,7 +185,7 @@ export default function QuestionsAdmin() {
             ))}
           </div>
 
-          {/* DIFFICULTY CARDS */}
+          {/* Difficulty cards */}
           <strong>قيمة السؤال:</strong>
           <div style={{ display: "flex", gap: 12, margin: "10px 0" }}>
             {[200, 400, 600].map(val => (
@@ -186,7 +206,7 @@ export default function QuestionsAdmin() {
             ))}
           </div>
 
-          {/* COUNTRY CARDS */}
+          {/* Country cards */}
           <strong>الدول:</strong>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "10px 0" }}>
             {countries.map(c => (
@@ -208,7 +228,6 @@ export default function QuestionsAdmin() {
 
           <hr />
 
-          {/* QUESTION TEXT */}
           <strong>السؤال:</strong>
           {languages.map(l => (
             <input
@@ -223,7 +242,6 @@ export default function QuestionsAdmin() {
 
           <br /><br />
 
-          {/* ANSWER */}
           <strong>الجواب:</strong>
           {languages.map(l => (
             <input
@@ -238,7 +256,6 @@ export default function QuestionsAdmin() {
 
           <br /><br />
 
-          {/* MEDIA */}
           <strong>مرفق (اختياري):</strong><br />
           <select value={mediaType} onChange={e => setMediaType(e.target.value)}>
             <option value="">بدون</option>
@@ -258,11 +275,13 @@ export default function QuestionsAdmin() {
           )}
 
           <br /><br />
-          <button onClick={saveQuestion}>💾 حفظ السؤال</button>
+          <button onClick={saveQuestion}>
+            {editId ? "💾 حفظ التعديل" : "➕ حفظ السؤال"}
+          </button>
         </>
       )}
 
-      {/* ================= ALL QUESTIONS TAB ================= */}
+      {/* ================= ALL ================= */}
       {tab === "all" && (
         <>
           <input
@@ -271,16 +290,21 @@ export default function QuestionsAdmin() {
             onChange={e => setSearch(e.target.value)}
           />
           <hr />
+
           {filteredQuestions.map(q => (
             <div key={q.id}>
-              <strong>{q.question?.ar}</strong> ({q.difficulty})
+              <strong>{q.question?.ar}</strong> ({q.difficulty}){" "}
+              {q.active ? "🟢" : "🔴"}
+
+              <button onClick={() => startEdit(q)}>✏️</button>
+              <button onClick={() => toggleActive(q.id, q.active)}>👁</button>
               <button onClick={() => deleteQuestion(q.id)}>🗑</button>
             </div>
           ))}
         </>
       )}
 
-      {/* ================= BY CATEGORY TAB ================= */}
+      {/* ================= BY CATEGORY ================= */}
       {tab === "byCategory" && (
         <>
           <div style={{ marginBottom: 15 }}>
@@ -306,7 +330,11 @@ export default function QuestionsAdmin() {
             .filter(q => q.categoryId === filterCategory)
             .map(q => (
               <div key={q.id}>
-                <strong>{q.question?.ar}</strong> ({q.difficulty})
+                <strong>{q.question?.ar}</strong> ({q.difficulty}){" "}
+                {q.active ? "🟢" : "🔴"}
+
+                <button onClick={() => startEdit(q)}>✏️</button>
+                <button onClick={() => toggleActive(q.id, q.active)}>👁</button>
                 <button onClick={() => deleteQuestion(q.id)}>🗑</button>
               </div>
             ))}
