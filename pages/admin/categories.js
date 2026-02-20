@@ -18,7 +18,7 @@ export default function CategoriesAdmin() {
   const [categories, setCategories] = useState([]);
   const [languages, setLanguages] = useState([]);
 
-  // form state
+  // form
   const [editId, setEditId] = useState(null);
   const [name, setName] = useState({});
   const [iconUrl, setIconUrl] = useState("");
@@ -52,7 +52,7 @@ export default function CategoriesAdmin() {
   };
 
   const saveCategory = async () => {
-    if (!name || Object.keys(name).length === 0) {
+    if (Object.keys(name).length === 0) {
       alert("اكتب اسم القسم");
       return;
     }
@@ -80,4 +80,60 @@ export default function CategoriesAdmin() {
     fetchAll();
   };
 
-  const deleteCategory = async (id
+  const deleteCategory = async (id) => {
+    if (!confirm("متأكد تبي تحذف القسم؟")) return;
+
+    await deleteDoc(doc(db, "categories", id));
+    fetchAll();
+  };
+
+  const startEdit = (cat) => {
+    setEditId(cat.id);
+    setName(cat.name || {});
+    setIconUrl(cat.icon || "");
+  };
+
+  if (loading) return <p>جاري التحميل...</p>;
+
+  return (
+    <div style={{ padding: 40 }}>
+      <h1>إدارة الأقسام</h1>
+
+      {/* FORM */}
+      <h3>{editId ? "✏️ تعديل قسم" : "➕ إضافة قسم"}</h3>
+
+      {languages.map(l => (
+        <input
+          key={l.code}
+          placeholder={`اسم القسم (${l.code})`}
+          value={name[l.code] || ""}
+          onChange={e =>
+            setName(prev => ({ ...prev, [l.code]: e.target.value }))
+          }
+        />
+      ))}
+
+      <br /><br />
+
+      <input
+        placeholder="رابط أيقونة القسم (اختياري)"
+        value={iconUrl}
+        onChange={e => setIconUrl(e.target.value)}
+      />
+
+      <br /><br />
+
+      <button onClick={saveCategory}>
+        {editId ? "💾 حفظ التعديل" : "➕ إضافة القسم"}
+      </button>
+
+      {editId && (
+        <button onClick={resetForm} style={{ marginLeft: 10 }}>
+          ❌ إلغاء
+        </button>
+      )}
+
+      <hr />
+
+      {/* LIST */}
+      <h3>الأقسام
